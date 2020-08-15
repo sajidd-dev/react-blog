@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const {User} = require('./model/user');
+const { auth } = require('./middleware/auth');
 const config = require('./config/key');
 
 mongoose.connect(config.mongoURI, { useNewUrlParser: true });
@@ -14,8 +15,16 @@ mongoose.connection.once('open',function(){
     console.log('connection error:',error);
 })
 
-app.get('/', (req,res) => {
-    res.send('hello world ');
+app.get('/api/user/auth', auth, (req,res) => {
+    res.status(200).json({
+        _id: req._id,
+        isAuth: true,
+        email: req.user.email,
+        name: req.user.name,
+        lastname: req.user.lastname,
+        role: req.user.role
+    })
+
 })
 
 app.use(bodyParser.urlencoded({extended :true}));
@@ -46,7 +55,6 @@ app.post('/api/user/login', (req,res) => {
                 return res.json({loginSuccess: false, message : 'wrong password'})
             }
         })
-
         user.generateToken((err, user) => {
             if(err) return res.status(400).send(err);
             res.cookie("x_auth", user.token).status(200)
@@ -58,6 +66,14 @@ app.post('/api/user/login', (req,res) => {
 
 })
 
+app.get('/api/user/logout', auth , (req,res) => {
+    User.findOneAndUpdate({_id: req.user._id},{token: ""},(err,doc) => {
+        if(err) return res.json({success: false, err})
+        return res.status(200).send({
+            success: true
+        })
+    })
+})
 app.listen(5000);
 
 
